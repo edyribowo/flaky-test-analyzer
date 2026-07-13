@@ -160,10 +160,19 @@ public class JenkinsClient {
         StringBuilder sb = new StringBuilder(config.jenkinsUrl());
         for (String segment : config.jobName().split("/")) {
             if (!segment.isBlank()) {
-                sb.append("/job/").append(URLEncoder.encode(segment, StandardCharsets.UTF_8));
+                sb.append("/job/").append(encodePathSegment(segment));
             }
         }
         return sb.toString();
+    }
+
+    /**
+     * URLEncoder implements application/x-www-form-urlencoded, which encodes spaces as
+     * '+' — valid in a query string but not a URL path segment, where only '%20' is
+     * recognised. Jenkins job names commonly contain spaces, so this matters.
+     */
+    private static String encodePathSegment(String segment) {
+        return URLEncoder.encode(segment, StandardCharsets.UTF_8).replace("+", "%20");
     }
 
     private static String trimError(String error) {

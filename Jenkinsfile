@@ -10,6 +10,12 @@ pipeline {
                description: 'How many recent builds to analyse')
     }
 
+    environment {
+        // Jenkins' sh steps don't source the shell profile, so Homebrew's mvn
+        // isn't on PATH by default on macOS agents.
+        PATH = "/opt/homebrew/bin:${env.PATH}"
+    }
+
     triggers {
         // Run after the nightly regression suite has finished.
         cron('H 6 * * *')

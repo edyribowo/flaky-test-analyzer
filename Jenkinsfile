@@ -34,6 +34,13 @@ pipeline {
                 withCredentials([usernamePassword(credentialsId: 'jenkins-api-token',
                                                   usernameVariable: 'JENKINS_USER',
                                                   passwordVariable: 'JENKINS_API_TOKEN')]) {
+                    sh '''
+                        echo "DEBUG: JENKINS_USER=$JENKINS_USER"
+                        echo "DEBUG: auth check against target job:"
+                        curl -s -o /dev/null -w "DEBUG: http_code=%{http_code}\\n" \
+                             -u "$JENKINS_USER:$JENKINS_API_TOKEN" \
+                             "http://localhost:8080/job/Sauce%20Demo%20UI%20Automation/api/json"
+                    '''
                     sh """
                         java -jar target/flaky-test-analyzer.jar '${params.TARGET_JOB}' \
                              --builds ${params.BUILD_COUNT} \

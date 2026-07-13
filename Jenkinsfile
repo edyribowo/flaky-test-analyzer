@@ -6,8 +6,10 @@ pipeline {
     parameters {
         string(name: 'TARGET_JOB', defaultValue: 'nightly-regression',
                description: 'Jenkins job whose build history should be analysed')
-        string(name: 'BUILD_COUNT', defaultValue: '20',
-               description: 'How many recent builds to analyse')
+        string(name: 'BUILD_COUNT', defaultValue: 'all',
+               description: "How many recent builds to analyse. Use a number, or 'all' to use " +
+                             "every build the job has (capped at 300) — handy since jobs vary a lot " +
+                             "in how much history they carry")
     }
 
     environment {

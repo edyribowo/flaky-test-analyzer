@@ -119,8 +119,18 @@ public class HtmlReportWriter {
                 html.append("<li>Failed in builds: ").append(buildLinks(test)).append("</li>\n");
             }
             html.append("</ul>\n");
-            if (test.sampleError() != null) {
-                html.append("<pre>").append(escape(test.sampleError())).append("</pre>\n");
+            if (test.commonError() != null && test.commonErrorCount() > 1) {
+                html.append("<p class=\"muted\">Common failure pattern (")
+                        .append(test.commonErrorCount()).append("/").append(test.failCount())
+                        .append(" failures)</p>\n<pre>").append(escape(test.commonError())).append("</pre>\n");
+            }
+            if (test.sampleError() != null && !test.sampleError().equals(test.commonError())) {
+                html.append("<p class=\"muted\">Most recent failure</p>\n<pre>")
+                        .append(escape(test.sampleError())).append("</pre>\n");
+            }
+            if (test.sampleErrorSource() != null) {
+                html.append("<p class=\"muted\">Source: <code>").append(escape(test.sampleErrorSource()))
+                        .append("</code></p>\n");
             }
             html.append("</td></tr>\n");
         }

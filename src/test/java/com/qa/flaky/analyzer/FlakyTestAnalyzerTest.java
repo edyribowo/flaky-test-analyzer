@@ -172,6 +172,54 @@ class FlakyTestAnalyzerTest {
         assertEquals("LoginTest.flakyLogin", report.flakyBySeverity().get(0).testId());
     }
 
+    @Test
+    void commonErrorIsTheMostFrequentFailureMessageNotJustTheLatestOne() {
+        // Fails 3 times: two identical timeouts, one distinct connection-reset — the timeout
+        // is the "common issue" even though the connection-reset happened more recently.
+        List<BuildInfo> builds = new ArrayList<>();
+        String[] timeline = {"P", "F", "P", "F", "P", "F"};
+        String[] errors = {null, "timeout waiting for element", null, "timeout waiting for element", null, "connection reset"};
+        for (int i = 0; i < timeline.length; i++) {
+            int buildNumber = i + 1;
+            TestStatus status = "P".equals(timeline[i]) ? TestStatus.PASSED : TestStatus.FAILED;
+            builds.add(new BuildInfo(buildNumber, "UNSTABLE", FIXED_NOW, "url", List.of(
+                    new TestExecution("CheckoutTest", "applyCoupon", status, 1.0, buildNumber, FIXED_NOW, errors[i], null))));
+        }
+
+        TestAnalysis result = only(analyzer.analyze(builds, FIXED_NOW));
+
+        assertEquals(Verdict.FLAKY, result.verdict());
+        assertEquals("timeout waiting for element", result.commonError());
+        assertEquals(2, result.commonErrorCount());
+        assertEquals("connection reset", result.sampleError(), "most recent failure message is reported separately");
+    }
+
+    @Test
+    void sourceLocationIsExtractedFromTheStackTraceOfTheTestsOwnClass() {
+        String stackTrace = """
+                java.lang.AssertionError: expected [10] but found [0]
+                \tat org.junit.Assert.fail(Assert.java:89)
+                \tat org.junit.Assert.assertEquals(Assert.java:150)
+                \tat com.shop.CheckoutTest.applyCoupon(CheckoutTest.java:42)
+                \tat java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+                """;
+        List<BuildInfo> builds = new ArrayList<>();
+        for (int i = 0; i < 4; i++) {
+            int buildNumber = i + 1;
+            boolean fails = i % 2 == 1;
+            builds.add(new BuildInfo(buildNumber, "UNSTABLE", FIXED_NOW, "url", List.of(
+                    new TestExecution("com.shop.CheckoutTest", "applyCoupon",
+                            fails ? TestStatus.FAILED : TestStatus.PASSED, 1.0, buildNumber, FIXED_NOW,
+                            fails ? "expected [10] but found [0]" : null,
+                            fails ? stackTrace : null))));
+        }
+
+        TestAnalysis result = only(analyzer.analyze(builds, FIXED_NOW));
+
+        assertEquals("CheckoutTest.java:42", result.sampleErrorSource(),
+                "should point at the frame inside the test's own class, not the JUnit/JDK frames above it");
+    }
+
     // --- helpers -------------------------------------------------------------
 
     /** Analyses a single test whose outcome per build is given by a P/F/S timeline. */
@@ -203,6 +251,6 @@ class FlakyTestAnalyzerTest {
             default -> TestStatus.SKIPPED;
         };
         String error = testStatus.isFailed() ? "expected true but was false" : null;
-        return new TestExecution(className, testName, testStatus, duration, buildNumber, FIXED_NOW, error);
+        return new TestExecution(className, testName, testStatus, duration, buildNumber, FIXED_NOW, error, null);
     }
 }

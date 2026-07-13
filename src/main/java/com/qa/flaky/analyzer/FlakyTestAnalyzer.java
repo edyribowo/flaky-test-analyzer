@@ -16,6 +16,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Locale;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Rule-based, deterministic flakiness detection. No AI, no randomness, no wall-clock input:
@@ -144,6 +146,10 @@ public class FlakyTestAnalyzer {
                 .map(TestExecution::buildNumber)
                 .toList();
 
+        List<TestExecution> failures = conclusive.stream().filter(e -> e.status().isFailed()).toList();
+        TestExecution mostRecentFailure = failures.isEmpty() ? null : failures.get(failures.size() - 1);
+        ErrorPattern commonError = commonError(failures);
+
         return new TestAnalysis(
                 history.testId(),
                 history.className(),
@@ -167,7 +173,11 @@ public class FlakyTestAnalyzer {
                 timeline(all),
                 failedBuilds,
                 indicators(verdict, flipCount, flipRate, recentFlipCount, passRate, failCount, cv, trailingFailures),
-                sampleError(conclusive));
+                mostRecentFailure == null ? null : mostRecentFailure.errorDetails(),
+                mostRecentFailure == null ? null
+                        : sourceLocation(mostRecentFailure.errorStackTrace(), history.className()),
+                commonError.message(),
+                commonError.count());
     }
 
     private Verdict decideVerdict(int conclusiveRuns, int passCount, int failCount, int trailingFailures) {
@@ -276,14 +286,64 @@ public class FlakyTestAnalyzer {
         return sb.toString();
     }
 
-    private static String sampleError(List<TestExecution> conclusive) {
-        for (int i = conclusive.size() - 1; i >= 0; i--) {
-            TestExecution execution = conclusive.get(i);
-            if (execution.status().isFailed() && execution.errorDetails() != null) {
-                return execution.errorDetails();
+    /** Recurring error message plus how many failures carried it — the "common issue", as opposed
+     *  to whatever the single most recent failure happened to say. */
+    private record ErrorPattern(String message, int count) {
+        static final ErrorPattern NONE = new ErrorPattern(null, 0);
+    }
+
+    /**
+     * Groups failures by exact error message and returns the most frequent one. Ties are broken
+     * by earliest occurrence (failures are processed oldest-first via a LinkedHashMap), so the
+     * result is deterministic.
+     */
+    private static ErrorPattern commonError(List<TestExecution> failures) {
+        Map<String, Integer> counts = new LinkedHashMap<>();
+        for (TestExecution failure : failures) {
+            String message = failure.errorDetails();
+            if (message != null) {
+                counts.merge(message, 1, Integer::sum);
             }
         }
-        return null;
+        String bestMessage = null;
+        int bestCount = 0;
+        for (Map.Entry<String, Integer> entry : counts.entrySet()) {
+            if (entry.getValue() > bestCount) {
+                bestMessage = entry.getKey();
+                bestCount = entry.getValue();
+            }
+        }
+        return bestMessage == null ? ErrorPattern.NONE : new ErrorPattern(bestMessage, bestCount);
+    }
+
+    /** Matches a stack trace frame: "at fully.qualified.Class.method(File.java:123)". */
+    private static final Pattern STACK_FRAME = Pattern.compile("at\\s+([\\w.$]+)\\(([^():]+\\.\\w+):(\\d+)\\)");
+
+    /**
+     * Points at the line that actually caused the failure: the first stack frame belonging to
+     * the test's own class, falling back to the first frame of any kind (e.g. a helper method
+     * in the same package) if the test class itself never appears — still far more useful than
+     * the raw exception message alone.
+     */
+    private static String sourceLocation(String stackTrace, String className) {
+        if (stackTrace == null || stackTrace.isBlank()) {
+            return null;
+        }
+        Matcher matcher = STACK_FRAME.matcher(stackTrace);
+        String firstFrame = null;
+        while (matcher.find()) {
+            String frameClass = matcher.group(1);
+            String location = matcher.group(2) + ":" + matcher.group(3);
+            if (firstFrame == null) {
+                firstFrame = location;
+            }
+            // frameClass is "<class>.<method>", e.g. "com.shop.CheckoutTest.applyCoupon" —
+            // match the class prefix, including inner classes ("Outer$Inner.method").
+            if (frameClass.startsWith(className + ".") || frameClass.startsWith(className + "$")) {
+                return location;
+            }
+        }
+        return firstFrame;
     }
 
     /**

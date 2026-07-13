@@ -46,7 +46,10 @@ public class FlakyTestAnalyzerApp {
                     .outputDir(Path.of(options.outputDir))
                     .build();
 
-            System.out.printf(Locale.ROOT, "Analyzing job '%s' (last %d builds)%n", config.jobName(), config.buildLimit());
+            String buildsDescription = config.buildLimit() > 0
+                    ? "last " + config.buildLimit() + " builds"
+                    : "all available builds";
+            System.out.printf(Locale.ROOT, "Analyzing job '%s' (%s)%n", config.jobName(), buildsDescription);
 
             List<BuildInfo> builds = options.xmlDir != null
                     ? new JUnitXmlParser().parseBuildHistory(Path.of(options.xmlDir))
@@ -112,6 +115,7 @@ public class FlakyTestAnalyzerApp {
 
                 Options:
                   --builds <n>        Number of recent builds to analyze (default: 20)
+                  --builds all        Analyze every build the job has (capped at 300)
                   --jenkins <url>     Jenkins base URL (default: $JENKINS_URL, else http://localhost:8080)
                   --output <dir>      Output directory for reports (default: flaky-report)
                   --from-xml <dir>    Read JUnit XML from disk instead of the Jenkins API.
@@ -143,7 +147,7 @@ public class FlakyTestAnalyzerApp {
 
             for (int i = 1; i < args.length; i++) {
                 switch (args[i]) {
-                    case "--builds" -> buildLimit = Integer.parseInt(requireValue(args, ++i, "--builds"));
+                    case "--builds" -> buildLimit = parseBuildLimit(requireValue(args, ++i, "--builds"));
                     case "--jenkins" -> jenkinsUrl = requireValue(args, ++i, "--jenkins");
                     case "--output" -> outputDir = requireValue(args, ++i, "--output");
                     case "--from-xml" -> xmlDir = requireValue(args, ++i, "--from-xml");
@@ -158,6 +162,22 @@ public class FlakyTestAnalyzerApp {
                 throw new IllegalArgumentException("Missing value for " + option);
             }
             return args[index];
+        }
+
+        /** "all" (case-insensitive) resolves to 0, the sentinel for "every build the job has". */
+        private static int parseBuildLimit(String value) {
+            if ("all".equalsIgnoreCase(value)) {
+                return 0;
+            }
+            try {
+                int n = Integer.parseInt(value);
+                if (n <= 0) {
+                    throw new IllegalArgumentException("--builds must be a positive integer or 'all', got: " + value);
+                }
+                return n;
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException("--builds must be a positive integer or 'all', got: " + value);
+            }
         }
     }
 }

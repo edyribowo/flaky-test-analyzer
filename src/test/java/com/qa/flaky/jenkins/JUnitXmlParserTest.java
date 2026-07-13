@@ -44,6 +44,7 @@ class JUnitXmlParserTest {
 
         assertEquals(TestStatus.FAILED, executions.get(1).status());
         assertEquals("expected 10 but was 0", executions.get(1).errorDetails());
+        assertEquals("at CheckoutTest.java:42", executions.get(1).errorStackTrace());
         assertEquals(42, executions.get(1).buildNumber());
 
         assertEquals(TestStatus.SKIPPED, executions.get(2).status());

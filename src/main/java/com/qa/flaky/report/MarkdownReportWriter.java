@@ -85,8 +85,17 @@ public class MarkdownReportWriter {
             for (String indicator : test.indicators()) {
                 md.append("- ").append(indicator).append('\n');
             }
-            if (test.sampleError() != null) {
+            if (test.commonError() != null && test.commonErrorCount() > 1) {
+                md.append("\n**Common failure pattern** (").append(test.commonErrorCount())
+                        .append("/").append(test.failCount()).append(" failures)\n\n```\n")
+                        .append(test.commonError()).append("\n```\n");
+            }
+            if (test.sampleError() != null
+                    && !test.sampleError().equals(test.commonError())) {
                 md.append("\n**Most recent failure**\n\n```\n").append(test.sampleError()).append("\n```\n");
+            }
+            if (test.sampleErrorSource() != null) {
+                md.append("\n**Source:** `").append(test.sampleErrorSource()).append("`\n");
             }
             md.append('\n');
         }

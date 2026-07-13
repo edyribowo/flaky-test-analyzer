@@ -9,7 +9,11 @@ import java.util.List;
  * @param flipCount       number of pass->fail or fail->pass transitions between adjacent runs
  * @param flakinessScore  0-100, computed by {@code FlakyTestAnalyzer}; drives {@code severity}
  * @param indicators      human-readable reasons that explain the score and verdict
- * @param failedBuilds    build numbers where this test failed, for drill-down in Jenkins
+ * @param failedBuilds     build numbers where this test failed, for drill-down in Jenkins
+ * @param sampleError      message of the most recent failure
+ * @param sampleErrorSource file:line the most recent failure's stack trace points at, if resolvable
+ * @param commonError      the failure message that recurs most often among this test's failures
+ * @param commonErrorCount how many of {@code failCount} failures carried {@code commonError}
  */
 public record TestAnalysis(
         String testId,
@@ -34,7 +38,10 @@ public record TestAnalysis(
         String statusTimeline,
         List<Integer> failedBuilds,
         List<String> indicators,
-        String sampleError) {
+        String sampleError,
+        String sampleErrorSource,
+        String commonError,
+        int commonErrorCount) {
 
     public boolean isFlaky() {
         return verdict == Verdict.FLAKY;

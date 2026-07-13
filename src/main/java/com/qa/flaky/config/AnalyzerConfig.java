@@ -59,8 +59,9 @@ public record AnalyzerConfig(
             return this;
         }
 
+        /** {@code limit == 0} means "all builds the job has", resolved by {@code JenkinsClient}. */
         public Builder buildLimit(int limit) {
-            if (limit > 0) this.buildLimit = limit;
+            if (limit >= 0) this.buildLimit = limit;
             return this;
         }
 

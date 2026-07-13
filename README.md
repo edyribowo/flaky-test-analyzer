@@ -62,8 +62,13 @@ Written to `flaky-report/` (override with `--output`):
 | `flaky-report.json` | Machine-readable — **the input for the future AI module** |
 
 Each flaky test reports its statistics (runs, pass/fail rates, flips), its timeline
-(`PFPFPF`, oldest → newest), the builds it failed in, its most recent failure message, and
-the indicators that explain the verdict.
+(`PFPFPF`, oldest → newest), the builds it failed in, and the indicators that explain the
+verdict. For root-causing, it also reports:
+
+- **Common failure pattern** — the failure message that recurs most often (with a count),
+  which is often more useful than whatever the single most recent failure happened to say.
+- **Source** — the `File.java:line` inside the test's own class that the stack trace points
+  at, extracted from the JUnit report's stack trace rather than the exception message alone.
 
 Example console output:
 
@@ -87,7 +92,7 @@ Only the job name is required. Everything else has a default:
 | Flag / variable | Default | Meaning |
 |---|---|---|
 | `<job-name>` (positional) | — | Jenkins job. Folder paths work: `team/regression` |
-| `--builds <n>` | 20 | Recent builds to analyse |
+| `--builds <n>` | 20 | Recent builds to analyse. Pass `all` to analyse every build the job has (capped at 300) instead of picking a number per job |
 | `--jenkins <url>` / `JENKINS_URL` | `http://localhost:8080` | Jenkins base URL — set automatically inside a Jenkins build |
 | `JENKINS_USER` / `JENKINS_API_TOKEN` | — | Credentials for the REST API |
 | `--output <dir>` | `flaky-report` | Where reports are written |

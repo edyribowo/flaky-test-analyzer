@@ -35,6 +35,12 @@ public class JenkinsClient {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
+    /** Ceiling applied when the caller asks for "all" builds (buildLimit <= 0), so a job with
+     *  years of history doesn't turn one analysis into thousands of HTTP requests. */
+    private static final int AUTO_BUILD_CAP = 300;
+
+    private static final int MAX_STACK_TRACE_CHARS = 4000;
+
     private final AnalyzerConfig config;
     private final HttpClient http;
 
@@ -49,9 +55,14 @@ public class JenkinsClient {
     /**
      * Fetches the most recent builds for the job, newest first, and attaches the JUnit
      * test executions of each. Builds still running, or without test results, are skipped.
+     *
+     * <p>{@code buildLimit() <= 0} means "as many as the job has" (up to {@link #AUTO_BUILD_CAP}):
+     * jobs vary wildly in how much history they carry, so the caller doesn't have to know or
+     * guess the right number up front.
      */
     public List<BuildInfo> fetchRecentBuilds() throws IOException, InterruptedException {
-        String tree = "builds[number,result,timestamp,url]{0," + config.buildLimit() + "}";
+        int limit = config.buildLimit() > 0 ? config.buildLimit() : AUTO_BUILD_CAP;
+        String tree = "builds[number,result,timestamp,url]{0," + limit + "}";
         String url = jobUrl() + "/api/json?tree=" + URLEncoder.encode(tree, StandardCharsets.UTF_8);
 
         JsonNode root = getJson(url)
@@ -121,7 +132,8 @@ public class JenkinsClient {
                         testCase.path("duration").asDouble(0.0),
                         buildNumber,
                         timestamp,
-                        trimError(testCase.path("errorDetails").asText(null))));
+                        trimError(testCase.path("errorDetails").asText(null)),
+                        trimStackTrace(testCase.path("errorStackTrace").asText(null))));
             }
         }
     }
@@ -181,5 +193,16 @@ public class JenkinsClient {
         }
         String single = error.replaceAll("\\s+", " ").trim();
         return single.length() > 300 ? single.substring(0, 297) + "..." : single;
+    }
+
+    /** Unlike {@link #trimError}, newlines are kept — the source-frame extraction needs them. */
+    private static String trimStackTrace(String stackTrace) {
+        if (stackTrace == null || stackTrace.isBlank()) {
+            return null;
+        }
+        String trimmed = stackTrace.strip();
+        return trimmed.length() > MAX_STACK_TRACE_CHARS
+                ? trimmed.substring(0, MAX_STACK_TRACE_CHARS) + "\n... (truncated)"
+                : trimmed;
     }
 }

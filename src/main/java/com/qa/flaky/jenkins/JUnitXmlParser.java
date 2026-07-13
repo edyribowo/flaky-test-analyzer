@@ -96,7 +96,8 @@ public class JUnitXmlParser {
                         parseDouble(attr(element, "time", "0")),
                         buildNumber,
                         timestamp,
-                        errorOf(element)));
+                        errorOf(element),
+                        stackTraceOf(element)));
             }
             return executions;
         } catch (ParserConfigurationException | org.xml.sax.SAXException e) {
@@ -130,6 +131,19 @@ public class JUnitXmlParser {
                     return null;
                 }
                 return single.length() > 300 ? single.substring(0, 297) + "..." : single;
+            }
+        }
+        return null;
+    }
+
+    /** The full body of <failure>/<error> — usually the stack trace — kept multi-line so the
+     *  source frame (file:line) can be located in it. */
+    private static String stackTraceOf(Element testCase) {
+        for (String tag : new String[]{"failure", "error"}) {
+            NodeList nodes = testCase.getElementsByTagName(tag);
+            if (nodes.getLength() > 0) {
+                String text = ((Element) nodes.item(0)).getTextContent();
+                return text == null || text.isBlank() ? null : text.strip();
             }
         }
         return null;

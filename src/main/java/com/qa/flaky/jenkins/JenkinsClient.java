@@ -93,6 +93,12 @@ public class JenkinsClient {
         return builds;
     }
 
+    /** Fields pulled per test case. Without an explicit tree, Jenkins' default JSON
+     *  representation omits the verbose ones (errorDetails, errorStackTrace) on
+     *  aggregated/multi-module reports — this must be requested explicitly. */
+    private static final String CASE_FIELDS =
+            "className,name,status,duration,errorDetails,errorStackTrace";
+
     /**
      * Reads the published JUnit results of one build. Handles both the flat
      * {@code suites[].cases[]} shape and the aggregated {@code childReports[]} shape
@@ -101,7 +107,10 @@ public class JenkinsClient {
     private List<TestExecution> fetchTestReport(int buildNumber, long timestampMillis)
             throws IOException, InterruptedException {
 
-        String url = jobUrl() + "/" + buildNumber + "/testReport/api/json";
+        String tree = "suites[cases[" + CASE_FIELDS + "]],"
+                + "childReports[result[suites[cases[" + CASE_FIELDS + "]]]]";
+        String url = jobUrl() + "/" + buildNumber + "/testReport/api/json?tree="
+                + URLEncoder.encode(tree, StandardCharsets.UTF_8);
         var maybeRoot = getJson(url);
         if (maybeRoot.isEmpty()) {
             return List.of();

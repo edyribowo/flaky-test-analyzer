@@ -7,7 +7,6 @@ import com.qa.flaky.jenkins.JenkinsClient;
 import com.qa.flaky.model.AnalysisReport;
 import com.qa.flaky.model.BuildInfo;
 import com.qa.flaky.model.TestAnalysis;
-import com.qa.flaky.report.HtmlReportWriter;
 import com.qa.flaky.report.JsonReportWriter;
 import com.qa.flaky.report.MarkdownReportWriter;
 
@@ -64,13 +63,11 @@ public class FlakyTestAnalyzerApp {
             AnalysisReport report = new FlakyTestAnalyzer(config).analyze(builds, Instant.now());
 
             Path md = new MarkdownReportWriter().write(report, config.outputDir());
-            Path html = new HtmlReportWriter().write(report, config.outputDir());
             Path json = new JsonReportWriter().write(report, config.outputDir());
 
             printSummary(report);
             System.out.println("\nReports written:");
             System.out.println("  " + md.toAbsolutePath());
-            System.out.println("  " + html.toAbsolutePath());
             System.out.println("  " + json.toAbsolutePath());
 
         } catch (IllegalArgumentException e) {

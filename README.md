@@ -19,7 +19,7 @@ java -jar target/flaky-test-analyzer.jar nightly-regression --builds 50
    in build order, producing a pass/fail timeline per test.
 3. **Analyse** — applies the rules below. No AI is involved at this stage, so every verdict is
    explainable and reproducible.
-4. **Report** — writes Markdown, HTML and JSON to the output directory.
+4. **Report** — writes Markdown and JSON to the output directory.
 
 ## Detection rules
 
@@ -58,7 +58,6 @@ Written to `flaky-report/` (override with `--output`):
 | File | Purpose |
 |---|---|
 | `flaky-report.md` | Jenkins build summary, or a GitHub PR comment / issue body |
-| `flaky-report.html` | Self-contained page archived as a Jenkins artifact (HTML Publisher plugin) |
 | `flaky-report.json` | Machine-readable — **the input for the future AI module** |
 
 Each flaky test reports its statistics (runs, pass/fail rates, flips), its timeline
@@ -101,9 +100,9 @@ Only the job name is required. Everything else has a default:
 ## Jenkins integration
 
 See [`Jenkinsfile`](Jenkinsfile): it builds the jar, runs the analyzer against the regression
-job, archives the reports, publishes the HTML, and marks the build **unstable** when flaky
-tests are found. Detecting flakiness never *fails* the pipeline — whether to block on it is
-the pipeline's decision, not the analyzer's.
+job, archives the reports, and marks the build **unstable** when flaky tests are found.
+Detecting flakiness never *fails* the pipeline — whether to block on it is the pipeline's
+decision, not the analyzer's.
 
 ## Project layout
 
@@ -115,7 +114,7 @@ com.qa.flaky
   jenkins/JUnitXmlParser    same data from JUnit XML on disk (offline / workspace)
   model/                    TestExecution, TestHistory, TestAnalysis, AnalysisReport …
   analyzer/FlakyTestAnalyzer   the rule-based detection and scoring
-  report/                   Markdown, HTML and JSON writers
+  report/                   Markdown and JSON writers
 ```
 
 ## Next: the AI module

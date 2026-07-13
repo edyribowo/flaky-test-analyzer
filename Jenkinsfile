@@ -49,14 +49,6 @@ pipeline {
             steps {
                 archiveArtifacts artifacts: 'flaky-report/*', fingerprint: true
 
-                publishHTML(target: [
-                    reportDir  : 'flaky-report',
-                    reportFiles: 'flaky-report.html',
-                    reportName : 'Flaky Test Report',
-                    keepAll    : true,
-                    alwaysLinkToLastBuild: true
-                ])
-
                 script {
                     def report = readJSON file: 'flaky-report/flaky-report.json'
                     currentBuild.description =

@@ -90,12 +90,14 @@ public class MarkdownReportWriter {
                         .append("/").append(test.failCount()).append(" failures)\n\n```\n")
                         .append(test.commonError()).append("\n```\n");
             }
-            if (test.sampleError() != null
-                    && !test.sampleError().equals(test.commonError())) {
+            if (test.sampleErrorStackTrace() != null) {
+                md.append("\n**Most recent failure");
+                if (test.sampleErrorSource() != null) {
+                    md.append(" — ").append(test.sampleErrorSource());
+                }
+                md.append("**\n\n```\n").append(test.sampleErrorStackTrace()).append("\n```\n");
+            } else if (test.sampleError() != null && !test.sampleError().equals(test.commonError())) {
                 md.append("\n**Most recent failure**\n\n```\n").append(test.sampleError()).append("\n```\n");
-            }
-            if (test.sampleErrorSource() != null) {
-                md.append("\n**Source:** `").append(test.sampleErrorSource()).append("`\n");
             }
             md.append('\n');
         }

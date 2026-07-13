@@ -176,6 +176,7 @@ public class FlakyTestAnalyzer {
                 mostRecentFailure == null ? null : mostRecentFailure.errorDetails(),
                 mostRecentFailure == null ? null
                         : sourceLocation(mostRecentFailure.errorStackTrace(), history.className()),
+                mostRecentFailure == null ? null : mostRecentFailure.errorStackTrace(),
                 commonError.message(),
                 commonError.count());
     }

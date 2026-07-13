@@ -124,13 +124,15 @@ public class HtmlReportWriter {
                         .append(test.commonErrorCount()).append("/").append(test.failCount())
                         .append(" failures)</p>\n<pre>").append(escape(test.commonError())).append("</pre>\n");
             }
-            if (test.sampleError() != null && !test.sampleError().equals(test.commonError())) {
+            if (test.sampleErrorStackTrace() != null) {
+                html.append("<p class=\"muted\">Most recent failure");
+                if (test.sampleErrorSource() != null) {
+                    html.append(" — <code>").append(escape(test.sampleErrorSource())).append("</code>");
+                }
+                html.append("</p>\n<pre>").append(escape(test.sampleErrorStackTrace())).append("</pre>\n");
+            } else if (test.sampleError() != null && !test.sampleError().equals(test.commonError())) {
                 html.append("<p class=\"muted\">Most recent failure</p>\n<pre>")
                         .append(escape(test.sampleError())).append("</pre>\n");
-            }
-            if (test.sampleErrorSource() != null) {
-                html.append("<p class=\"muted\">Source: <code>").append(escape(test.sampleErrorSource()))
-                        .append("</code></p>\n");
             }
             html.append("</td></tr>\n");
         }
